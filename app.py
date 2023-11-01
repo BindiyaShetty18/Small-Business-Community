@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for
+# ...
+
 import sqlite3
 
 app = Flask(__name__)
@@ -19,6 +21,10 @@ init_db()
 @app.route('/')
 def home():
     return render_template('index.html')
+
+@app.route('/contact.html')
+def contact():
+    return render_template('contact.html')
 
 @app.route('/signup.html', methods=['GET', 'POST'])
 def signup():
@@ -65,3 +71,4 @@ def feedback_success():
 
 if __name__ == '__main__':
     app.run(debug=True) 
+
