@@ -1,79 +1,112 @@
 from flask import Flask, render_template, request, redirect, url_for
-# ...
+from flask_mysqldb import MySQL
 
-import sqlite3
+mysql = MySQL()
 
-app = Flask(__name__)
+def create_app():
+    app = Flask(__name__)
 
-# Configure a SQLite database
-DATABASE = 'users.db'
+    # Configure MySQL database
+    app.config['MYSQL_HOST'] = 'localhost'
+    app.config['MYSQL_USER'] = 'admin123'
+    app.config['MYSQL_PASSWORD'] = '1234'
+    app.config['MYSQL_DB'] = 'users'
+    app.config['MYSQL_CURSORCLASS'] = 'DictCursor'  # To receive results as dictionaries
 
-def init_db():
-    conn = sqlite3.connect(DATABASE)
-    c = conn.cursor()
-    c.execute('CREATE TABLE IF NOT EXISTS users (id INTEGER PRIMARY KEY, username TEXT, email TEXT, password TEXT)')
-    c.execute('CREATE TABLE IF NOT EXISTS feedback (id INTEGER PRIMARY KEY, name TEXT, email TEXT, rating INTEGER, message TEXT)')
-    conn.commit()
-    conn.close()
+    # Initialize MySQL
+    mysql.init_app(app)
 
-init_db()
+    # Define the init_db function
+    def init_db():
+        with app.app_context():
+            # Inside this block, current_app points to the Flask application handling the request.
+            conn = mysql.connection
+            cursor = conn.cursor()
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+            try:
+                cursor.execute('DROP TABLE IF EXISTS users')
+                cursor.execute('''
+                    CREATE TABLE users (
+                        id INT AUTO_INCREMENT PRIMARY KEY,
+                        username VARCHAR(255) NOT NULL,
+                        password VARCHAR(255) NOT NULL
+                    )
+                ''')
+                print("Table 'users' created successfully")
+                conn.commit()
+            except Exception as e:
+                print(f"Error creating table: {e}")
+            finally:
+                cursor.close()
 
-@app.route('/contact.html')
-def contact():
-    return render_template('contact.html')
+    # Run init_db only once
+    init_db()
 
-@app.route('/services.html')
-def services():
-    return render_template('services.html')
+    # Rest of your routes...
+    @app.route('/')
+    def index():
+        return render_template('index.html')
 
-@app.route('/signup.html', methods=['GET', 'POST'])
-def signup():
-    if request.method == 'POST':
-        username = request.form['username']
-        email = request.form['email']
-        password = request.form['password']
+    @app.route('/contact.html')
+    def contact():
+        return render_template('contact.html')
 
-        conn = sqlite3.connect(DATABASE)
-        c = conn.cursor()
-        c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (username, email, password))
-        conn.commit()
-        conn.close()
+    @app.route('/services.html')
+    def services():
+        return render_template('services.html')
 
-        return redirect(url_for('signup_success'))
+    @app.route('/signup.html', methods=['GET', 'POST'])
+    def signup():
+        if request.method == 'POST':
+            username = request.form['username']
+            password = request.form['password']
 
-    return render_template('signup.html')
+            # Insert the user into the database
+            conn = mysql.connection
+            cursor = conn.cursor()
+            cursor.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (username, password))
+            conn.commit()
+            cursor.close()
 
-@app.route('/signup/success')
-def signup_success():
-    return 'Signup successful! Thank you for registering.'
+            # Redirect to a success page or display a success message
+            return redirect(url_for('signup_success'))
 
-@app.route('/feedback.html', methods=['GET', 'POST'])
-def feedback():
-    if request.method == 'POST':
-        name = request.form.get('name')
-        email = request.form.get('email')
-        rating = request.form.get('rating')
-        message = request.form.get('message')
-        
-        conn = sqlite3.connect(DATABASE)
-        c = conn.cursor()
-        c.execute("INSERT INTO feedback (name, email, rating, message) VALUES (?, ?, ?, ?)", (name, email, rating, message))
-        conn.commit()
-        conn.close()
+        return render_template('signup.html')
 
-        return redirect(url_for('feedback_success'))
+    # Signup success route
+    @app.route('/signup-success')
+    def signup_success():
+        return 'Signup completed successfully!'
 
-    return render_template('feedback.html')
-   
-@app.route('/feedback/success')
-def feedback_success():
-    return 'Feedback successful! Thank you for your feedback.'
+    @app.route('/feedback.html', methods=['GET', 'POST'])
+    def feedback():
+        if request.method == 'POST':
+            name = request.form.get('name')
+            email = request.form.get('email')
+            rating = request.form.get('rating')
+            message = request.form.get('message')
+            
+            conn = mysql.connection
+            cursor = conn.cursor()
+            cursor.execute("INSERT INTO feedback (name, email, rating, message) VALUES (%s, %s, %s, %s)", (name, email, rating, message))
+            conn.commit()
+            cursor.close()
+
+            return redirect(url_for('feedback_success'))
+
+        return render_template('feedback.html')
+       
+    @app.route('/feedback-success')
+    def feedback_success():
+        return 'Feedback successful! Thank you for your feedback.'
+
+    return app
+
+# Create the app using the factory function
+app = create_app()
 
 if __name__ == '__main__':
-    app.run(debug=True) 
+    # Run the app in debug mode
+    app.run(debug=True)
 
 
