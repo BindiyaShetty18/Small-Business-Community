@@ -18,26 +18,35 @@ def create_app():
 
     # Define the init_db function
     def init_db():
-        with app.app_context():
-            # Inside this block, current_app points to the Flask application handling the request.
-            conn = mysql.connection
-            cursor = conn.cursor()
+     with app.app_context():
+        conn = mysql.connection
+        cursor = conn.cursor()
 
-            try:
-                cursor.execute('DROP TABLE IF EXISTS users')
-                cursor.execute('''
-                    CREATE TABLE users (
-                        id INT AUTO_INCREMENT PRIMARY KEY,
-                        username VARCHAR(255) NOT NULL,
-                        password VARCHAR(255) NOT NULL
-                    )
-                ''')
-                print("Table 'users' created successfully")
-                conn.commit()
-            except Exception as e:
-                print(f"Error creating table: {e}")
-            finally:
-                cursor.close()
+        try:
+            cursor.execute('DROP TABLE IF EXISTS users')
+            cursor.execute('DROP TABLE IF EXISTS feedback')
+            cursor.execute('''
+                CREATE TABLE users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    username VARCHAR(255) NOT NULL,
+                    password VARCHAR(255) NOT NULL
+                )
+            ''')
+            cursor.execute('''
+                CREATE TABLE feedback (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    name VARCHAR(255) NOT NULL,
+                    email VARCHAR(255) NOT NULL,
+                    rating INT NOT NULL,
+                    message TEXT NOT NULL
+                )
+            ''')
+            print("Tables 'users' and 'feedback' created successfully")
+            conn.commit()
+        except Exception as e:
+            print(f"Error creating tables: {e}")
+        finally:
+            cursor.close()
 
     # Run init_db only once
     init_db()
@@ -46,6 +55,11 @@ def create_app():
     @app.route('/')
     def index():
         return render_template('index.html')
+    
+    @app.route('/about.html')
+    def about():
+        return render_template('about.html')
+
 
     @app.route('/contact.html')
     def contact():
@@ -81,10 +95,10 @@ def create_app():
     @app.route('/feedback.html', methods=['GET', 'POST'])
     def feedback():
         if request.method == 'POST':
-            name = request.form.get('name')
-            email = request.form.get('email')
-            rating = request.form.get('rating')
-            message = request.form.get('message')
+            name = request.form['name']
+            email = request.form['email']
+            rating = request.form['rating']
+            message = request.form['message']
             
             conn = mysql.connection
             cursor = conn.cursor()
@@ -98,7 +112,7 @@ def create_app():
        
     @app.route('/feedback-success')
     def feedback_success():
-        return 'Feedback successful! Thank you for your feedback.'
+        return 'feedback completed successfully! , Thanks for your feedback !'
 
     return app
 
@@ -108,5 +122,4 @@ app = create_app()
 if __name__ == '__main__':
     # Run the app in debug mode
     app.run(debug=True)
-
 
